@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OwokFood - Pemesanan Makanan</title>
+    
+    <!-- Google Fonts: Space Grotesk for that Neobrutalism look -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* NEOBRUTALISM CUSTOM STYLES */
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #f4f4f0;
+            color: #000;
+        }
+
+        /* Brutalist Box Elements */
+        .brutal-card {
+            background-color: #fff;
+            border: 4px solid #000;
+            box-shadow: 8px 8px 0px #000;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .brutal-btn {
+            border: 3px solid #000;
+            box-shadow: 5px 5px 0px #000;
+            font-weight: bold;
+            border-radius: 6px;
+            transition: all 0.1s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brutal-btn:active, .brutal-card.clickable:active {
+            transform: translate(5px, 5px);
+            box-shadow: 0px 0px 0px #000;
+        }
+
+        .brutal-input {
+            border: 3px solid #000;
+            border-radius: 6px;
+            padding: 10px 15px;
+            box-shadow: 4px 4px 0px #000;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .brutal-input:focus {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        /* Color Palette */
+        .neo-yellow { background-color: #FFD800; }
+        .neo-pink { background-color: #FF90E8; }
+        .neo-cyan { background-color: #23A094; }
+        .neo-green { background-color: #90FF9E; }
+        .neo-purple { background-color: #B28DFF; }
+
+        .hidden-view { display: none !important; }
+
+        /* Toast Animation */
+        @keyframes slideUp {
+            from { transform: translateY(100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-show {
+            animation: slideUp 0.3s ease forwards;
+        }
+
+        /* Menu Pop Animation */
+        @keyframes popIn {
+            0% { transform: scale(0.9) translateY(20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .menu-pop {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0; /* Starts hidden until animation plays */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- NAVBAR -->
+    <nav class="bg-neo-yellow border-b-4 border-black px-4 py-3 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('home')">
+                <div class="bg-black text-white px-2 py-1 transform -rotate-3 font-bold text-xl border-2 border-white">OwokFood</div>
+            </div>
+            
+            <div id="nav-guest">
+                <button onclick="toggleModal('login-modal')" class="brutal-btn bg-white px-6 py-2">LOGIN</button>
+            </div>
+            
+            <div id="nav-user" class="hidden-view flex gap-3 items-center">
+                <span class="hidden md:inline font-bold bg-white px-3 py-1 border-2 border-black rounded" id="user-display-name">User</span>
+                <button onclick="toggleCart()" id="btn-cart" class="brutal-btn neo-cyan px-4 py-2 hidden-view">
+                    <i class="fas fa-shopping-cart mr-2"></i> <span id="cart-count">0</span>
+                </button>
+                <button onclick="navigate('orders')" id="btn-my-orders" class="brutal-btn neo-pink px-4 py-2 hidden-view">Pesanan</button>
+                <button onclick="logout()" class="brutal-btn bg-red-500 text-white px-4 py-2"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow max-w-6xl mx-auto w-full p-4 md:p-8">
+
+        <!-- ======================= HOME / MENU CUSTOMER ======================= -->
+        <section id="view-home" class="view-section">
+            <div class="bg-neo-purple brutal-card p-8 mb-10 transform rotate-1 md:-rotate-1">
+                <h1 class="text-4xl md:text-6xl font-black mb-4 uppercase tracking-tighter shadow-black text-shadow" style="text-shadow: 3px 3px 0 #fff;">Lapar? OwokFood in Aja!</h1>
+                <p class="text-xl font-bold border-l-4 border-black pl-4">Pesan makanan favoritmu dengan cepat, brutal, dan nikmat.</p>
+            </div>
+
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black bg-black text-white px-4 py-1 inline-block transform -skew-x-12">MENU HARI INI</h2>
+            </div>
+
+            <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Menu Items Injected via JS -->
+                <div class="col-span-full text-center py-10 font-bold">Memuat menu makanan...</div>
+            </div>
+        </section>
+
+        <!-- ======================= CUSTOMER ORDERS TRACKING ======================= -->
+        <section id="view-orders" class="view-section hidden-view">
+            <h2 class="text-4xl font-black mb-8 bg-neo-pink inline-block px-4 py-2 border-4 border-black shadow-[4px_4px_0px_#000] -rotate-2">Pesanan Kamu</h2>
+            <div id="customer-orders-container" class="space-y-6">
+                <!-- Customer Orders Injected via JS -->
+            </div>
+        </section>
+
+        <!-- ======================= ADMIN DASHBOARD ======================= -->
+        <section id="view-admin" class="view-section hidden-view">
+            <h2 class="text-4xl font-black mb-8 bg-black text-white inline-block px-4 py-2 border-4 border-black shadow-[4px_4px_0px_#FFD800]">COMMAND CENTER (ADMIN)</h2>
+            
+            <!-- Total Pendapatan Card -->
+            <div class="brutal-card bg-neo-pink p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                    <h3 class="text-2xl font-black">TOTAL PENDAPATAN:</h3>
+                    <p class="text-sm font-bold border-l-2 border-black pl-2 mt-1">Dihitung dari pesanan berstatus Selesai</p>
+                </div>
+                <span id="admin-revenue" class="text-4xl md:text-5xl font-black text-white mt-4 md:mt-0" style="text-shadow: 3px 3px 0 #000;">Rp 0</span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Kolom Kiri: Add Menu & Manage Menu -->
+                <div class="lg:col-span-1 flex flex-col gap-8">
+                    <!-- Add Menu Form -->
+                    <div class="brutal-card bg-neo-green p-6">
+                        <h3 class="text-2xl font-black mb-4 border-b-4 border-black pb-2">Tambah Menu</h3>
+                        <form id="form-add-menu" class="space-y-4">
+                            <div>
+                                <label class="font-bold block mb-1">Nama Makanan</label>
+                                <input type="text" id="menu-name" required class="brutal-input w-full bg-white">
+                            </div>
+                            <div>
+                                <label class="font-bold block mb-1">Harga (Rp)</label>
+                                <input type="number" id="menu-price" required class="brutal-input w-full bg-white">
+                            </div>
+                            <div>
+                                <label class="font-bold block mb-1">Kategori</label>
+                                <select id="menu-category" class="brutal-input w-full bg-white">
+                                    <option value="Makanan">Makanan</option>
+                                    <option value="Minuman">Minuman</option>
+                                    <option value="Snack">Snack</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="font-bold block mb-1">URL Gambar</label>
+                                <input type="url" id="menu-img" required class="brutal-input w-full bg-white" placeholder="https://...">
+                            </div>
+                            <button type="submit" class="brutal-btn bg-black text-white w-full py-3 mt-4 text-lg">SIMPAN MENU</button>
+                        </form>
+                    </div>
+
+                    <!-- Manage Menus List -->
+                    <div class="brutal-card bg-white p-6">
+                        <h3 class="text-2xl font-black mb-4 border-b-4 border-black pb-2 bg-neo-purple inline-block px-2 text-white">Kelola Menu</h3>
+                        <div id="admin-menu-list" class="space-y-3 max-h-64 overflow-y-auto pr-2">
+                            <!-- Menu list injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Admin Orders Management -->
+                <div class="lg:col-span-2">
+                    <div class="brutal-card bg-white p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-4 border-black pb-4 mb-6">
+                            <h3 class="text-2xl font-black bg-neo-yellow inline-block px-2 mb-4 sm:mb-0">Antrean Pesanan</h3>
+                            
+                            <!-- Order Filter -->
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <label class="font-bold hidden sm:block">Filter:</label>
+                                <select id="admin-order-filter" onchange="filterAdminOrders(this.value)" class="brutal-input bg-white py-2 flex-grow sm:flex-grow-0 cursor-pointer">
+                                    <option value="semua">Semua Pesanan</option>
+                                    <option value="pending">⏳ Pending</option>
+                                    <option value="diproses">🍳 Diproses</option>
+                                    <option value="selesai">✅ Selesai</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="admin-orders-container" class="space-y-4">
+                            <!-- Orders Injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ======================= MODALS ======================= -->
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-80 z-[100] hidden-view flex items-center justify-center p-4">
+        <div class="brutal-card bg-white w-full max-w-md p-8 relative">
+            <button onclick="toggleModal('login-modal')" class="absolute -top-4 -right-4 brutal-btn bg-red-500 text-white w-10 h-10 rounded-full"><i class="fas fa-times"></i></button>
+            
+            <h2 class="text-3xl font-black text-center mb-6 bg-neo-yellow py-2 border-y-4 border-black">MASUK</h2>
+            
+            <div class="mb-6">
+                <p class="font-bold text-center mb-4">Login Customer (Google)</p>
+                <button onclick="loginGoogle()" class="brutal-btn bg-white w-full py-3 flex justify-center items-center gap-3">
+                    <img src="https://developers.google.com/identity/images/g-logo.png" class="w-6 h-6"> Lanjut dengan Google
+                </button>
+            </div>
+
+            <div class="border-t-4 border-black border-dashed my-6 relative">
+                <span class="absolute left-1/2 -translate-x-1/2 -top-3 bg-white px-2 font-bold">ATAU ADMIN</span>
+            </div>
+
+            <form id="form-admin-login" class="space-y-4">
+                <input type="email" id="admin-email" placeholder="Email Admin" required class="brutal-input w-full">
+                <input type="password" id="admin-password" placeholder="Password Admin" required class="brutal-input w-full">
+                <button type="submit" class="brutal-btn bg-black text-white w-full py-3">LOGIN ADMIN</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar / Modal -->
+    <div id="cart-modal" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white border-l-4 border-black z-[90] transform translate-x-full transition-transform duration-300 shadow-[-10px_0_0_rgba(0,0,0,1)] flex flex-col">
+        <div class="p-6 border-b-4 border-black bg-neo-cyan flex justify-between items-center">
+            <h2 class="text-2xl font-black">KERANJANG</h2>
+            <button onclick="toggleCart()" class="brutal-btn bg-white w-8 h-8 p-0"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="flex-grow p-6 overflow-y-auto" id="cart-items-container">
+            <!-- Cart items go here -->
+        </div>
+
+        <div class="p-6 border-t-4 border-black bg-neo-yellow">
+            <div class="flex justify-between items-center mb-4 text-xl font-black">
+                <span>TOTAL:</span>
+                <span id="cart-total">Rp 0</span>
+            </div>
+            <button onclick="checkout()" id="btn-checkout" class="brutal-btn bg-black text-white w-full py-4 text-lg">PESAN SEKARANG</button>
+        </div>
+    </div>
+    <!-- Cart Overlay -->
+    <div id="cart-overlay" onclick="toggleCart()" class="fixed inset-0 bg-black bg-opacity-50 z-[85] hidden-view"></div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 brutal-card bg-neo-green px-6 py-4 z-[200] hidden-view font-bold flex items-center gap-3">
+        <i id="toast-icon" class="fas fa-check-circle text-2xl"></i>
+        <span id="toast-msg">Pesan sukses</span>
+    </div>
+
+    <!-- Firebase SDK Setup & Application Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDoc, serverTimestamp, doc, setDoc, onSnapshot, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // Konfigurasi Firebase dari User
+        const firebaseConfig = {
+            apiKey: "AIzaSyA6C6ucMUY4mPX7h2drVWfyAgyHWucaZVo",
+            authDomain: "owokfood.firebaseapp.com",
+            projectId: "owokfood",
+            storageBucket: "owokfood.firebasestorage.app",
+            messagingSenderId: "941988627591",
+            appId: "1:941988627591:web:7c25d3ddd83e0d9f172422"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // Jalur Root Collection (Mengikuti Rules Anda secara tepat)
+        const menusRef = collection(db, 'menus');
+        const ordersRef = collection(db, 'orders');
+        const usersRef = collection(db, 'users');
+
+        // State Aplikasi
+        let currentUser = null;
+        let isAdmin = false;
+        let menus = [];
+        let cart = [];
+        let isCartOpen = false;
+        
+        // State Khusus Admin
+        let adminOrdersData = [];
+
+        // ================= UTILS & UI =================
+        const formatRp = (num) => 'Rp ' + parseInt(num).toLocaleString('id-ID');
+        
+        window.navigate = (viewId) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden-view'));
+            if(viewId === 'home') document.getElementById('view-home').classList.remove('hidden-view');
+            if(viewId === 'orders') document.getElementById('view-orders').classList.remove('hidden-view');
+            if(viewId === 'admin') document.getElementById('view-admin').classList.remove('hidden-view');
+            window.scrollTo(0,0);
+        };
+
+        window.toggleModal = (id) => {
+            const el = document.getElementById(id);
+            el.classList.toggle('hidden-view');
+        };
+
+        const showToast = (msg, isError = false) => {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.className = `fixed bottom-6 right-6 brutal-card px-6 py-4 z-[200] font-bold flex items-center gap-3 toast-show ${isError ? 'bg-neo-pink text-white' : 'bg-neo-green'}`;
+            document.getElementById('toast-icon').className = `fas text-2xl ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}`;
+            
+            setTimeout(() => { toast.classList.add('hidden-view'); toast.classList.remove('toast-show'); }, 3000);
+        };
+
+        // ================= AUTHENTICATION =================
+        window.loginGoogle = async () => {
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                // Cek atau buat user di DB
+                await setDoc(doc(usersRef, result.user.uid), {
+                    email: result.user.email,
+                    name: result.user.displayName,
+                    role: 'customer'
+                }, { merge: true });
+                toggleModal('login-modal');
+                showToast('Login berhasil!');
+            } catch (error) {
+                console.error("Login Google Error:", error);
+                showToast('Gagal Login. Izinkan popup atau cek koneksi.', true);
+            }
+        };
+
+        document.getElementById('form-admin-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('admin-email').value;
+            const pass = document.getElementById('admin-password').value;
+            try {
+                const result = await signInWithEmailAndPassword(auth, email, pass);
+                // Set role admin di database
+                await setDoc(doc(usersRef, result.user.uid), { email: email, role: 'admin' }, { merge: true });
+                toggleModal('login-modal');
+                showToast('Berhasil masuk sebagai Admin');
+            } catch (error) {
+                console.error("Login Admin Error:", error);
+                showToast('Email / Password Admin Salah', true);
+            }
+        });
+
+        window.logout = async () => {
+            await signOut(auth);
+            cart = []; updateCartUI();
+            navigate('home');
+            showToast('Berhasil keluar');
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            const navGuest = document.getElementById('nav-guest');
+            const navUser = document.getElementById('nav-user');
+            
+            if (user) {
+                navGuest.classList.add('hidden-view');
+                navUser.classList.remove('hidden-view');
+                document.getElementById('user-display-name').innerText = user.displayName || user.email.split('@')[0];
+                
+                // Ambil role secara aman dengan block try-catch
+                try {
+                    const userDoc = await getDoc(doc(usersRef, user.uid));
+                    isAdmin = userDoc.exists() && userDoc.data().role === 'admin';
+                } catch (error) {
+                    console.error("Gagal mendapatkan role pengguna:", error);
+                    isAdmin = false;
+                }
+
+                if(isAdmin) {
+                    document.getElementById('btn-cart').classList.add('hidden-view');
+                    document.getElementById('btn-my-orders').classList.add('hidden-view');
+                    initAdmin();
+                    navigate('admin');
+                } else {
+                    document.getElementById('btn-cart').classList.remove('hidden-view');
+                    document.getElementById('btn-my-orders').classList.remove('hidden-view');
+                    initCustomerOrders();
+                    navigate('home');
+                }
+            } else {
+                isAdmin = false;
+                navGuest.classList.remove('hidden-view');
+                navUser.classList.add('hidden-view');
+                document.getElementById('btn-cart').classList.add('hidden-view');
+                document.getElementById('btn-my-orders').classList.add('hidden-view');
+                navigate('home');
+            }
+        });
+
+        // ================= FITUR PUBLIK (MENU MAKANAN) =================
+        const loadMenus = () => {
+            onSnapshot(menusRef, (snapshot) => {
+                menus = [];
+                const grid = document.getElementById('menu-grid');
+                grid.innerHTML = '';
+                
+                if(snapshot.empty) {
+                    grid.innerHTML = '<div class="col-span-full bg-white p-8 brutal-card text-center font-bold text-xl">Belum ada menu tersedia.</div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    menus.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort in Memory untuk mencegah kebutuhan index tambahan Firebase
+                menus.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+
+                menus.forEach((m, index) => {
+                    // Animasi Pop dengan delay progresif
+                    const delay = index * 100; // Delay 100ms antar item
+                    
+                    grid.innerHTML += `
+                        <div class="menu-pop brutal-card flex flex-col overflow-hidden bg-white hover:bg-neo-yellow transition-colors group" style="animation-delay: ${delay}ms;">
+                            <div class="h-48 border-b-4 border-black relative">
+                                <img src="${m.imageUrl}" onerror="this.src='https://via.placeholder.com/400x300?text=Food'" class="w-full h-full object-cover">
+                                <div class="absolute top-2 right-2 bg-black text-white px-2 py-1 text-sm font-bold border-2 border-white transform rotate-3">${m.category}</div>
+                            </div>
+                            <div class="p-4 flex flex-col flex-grow">
+                                <h3 class="font-black text-xl mb-1">${m.name}</h3>
+                                <p class="text-2xl font-bold text-neo-cyan mb-4 text-shadow" style="text-shadow: 1px 1px 0 #000;">${formatRp(m.price)}</p>
+                                <button onclick="addToCart('${m.id}')" class="mt-auto brutal-btn bg-neo-pink py-2 w-full text-black group-hover:bg-white">TAMBAH <i class="fas fa-plus ml-2"></i></button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Jika Admin login, render ulang list kelola menu
+                if(isAdmin) {
+                    renderAdminMenuList();
+                }
+
+            }, (error) => {
+                console.error("Error memuat menu:", error);
+                // Mencegah overlay merah muncul dengan menangani error ini
+            });
+        };
+
+        // ================= CART SYSTEM =================
+        window.toggleCart = () => {
+            isCartOpen = !isCartOpen;
+            const modal = document.getElementById('cart-modal');
+            const overlay = document.getElementById('cart-overlay');
+            if(isCartOpen) {
+                modal.classList.remove('translate-x-full');
+                overlay.classList.remove('hidden-view');
+            } else {
+                modal.classList.add('translate-x-full');
+                overlay.classList.add('hidden-view');
+            }
+        };
+
+        window.addToCart = (menuId) => {
+            if(!currentUser || isAdmin) {
+                showToast(isAdmin ? 'Admin tidak bisa order!' : 'Silakan Login Dulu!', true);
+                if(!currentUser) toggleModal('login-modal');
+                return;
+            }
+            const menu = menus.find(m => m.id === menuId);
+            const exist = cart.find(c => c.menuId === menuId);
+            if(exist) exist.qty += 1;
+            else cart.push({ menuId: menu.id, name: menu.name, price: menu.price, qty: 1, imageUrl: menu.imageUrl });
+            
+            updateCartUI();
+            showToast(`${menu.name} ditambahkan!`);
+        };
+
+        window.changeQty = (menuId, delta) => {
+            const item = cart.find(c => c.menuId === menuId);
+            if(item) {
+                item.qty += delta;
+                if(item.qty <= 0) cart = cart.filter(c => c.menuId !== menuId);
+                updateCartUI();
+            }
+        };
+
+        const updateCartUI = () => {
+            const container = document.getElementById('cart-items-container');
+            let total = 0;
+            let count = 0;
+            container.innerHTML = '';
+            
+            if(cart.length === 0) {
+                container.innerHTML = '<div class="text-center font-bold text-gray-500 mt-10">Keranjang Kosong</div>';
+            } else {
+                cart.forEach(item => {
+                    total += (item.price * item.qty);
+                    count += item.qty;
+                    container.innerHTML += `
+                        <div class="flex gap-3 mb-4 brutal-card p-3 border-2">
+                            <img src="${item.imageUrl}" class="w-16 h-16 object-cover border-2 border-black rounded">
+                            <div class="flex-grow">
+                                <h4 class="font-bold text-sm line-clamp-1">${item.name}</h4>
+                                <div class="text-sm font-bold text-neo-cyan">${formatRp(item.price)}</div>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <button onclick="changeQty('${item.menuId}', -1)" class="bg-neo-pink border-2 border-black w-6 h-6 flex items-center justify-center font-bold rounded-full">-</button>
+                                    <span class="font-bold">${item.qty}</span>
+                                    <button onclick="changeQty('${item.menuId}', 1)" class="bg-neo-green border-2 border-black w-6 h-6 flex items-center justify-center font-bold rounded-full">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('cart-total').innerText = formatRp(total);
+            document.getElementById('cart-count').innerText = count;
+            document.getElementById('btn-checkout').disabled = cart.length === 0;
+        };
+
+        // ================= CHECKOUT / CREATE ORDER =================
+        window.checkout = async () => {
+            if(cart.length === 0 || !currentUser) return;
+            
+            document.getElementById('btn-checkout').innerText = 'MEMPROSES...';
+            document.getElementById('btn-checkout').disabled = true;
+
+            const totalCost = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            
+            const orderData = {
+                customerId: currentUser.uid,
+                customerName: currentUser.displayName || currentUser.email.split('@')[0],
+                items: cart,
+                totalCost: totalCost,
+                status: 'pending', // pending, diproses, selesai
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                await addDoc(ordersRef, orderData);
+                cart = [];
+                updateCartUI();
+                toggleCart();
+                showToast('Pesanan berhasil dibuat!');
+                navigate('orders');
+            } catch (error) {
+                console.error("Checkout Error:", error);
+                showToast('Gagal checkout. Terjadi kesalahan izin Firestore.', true);
+            } finally {
+                document.getElementById('btn-checkout').innerText = 'PESAN SEKARANG';
+            }
+        };
+
+        // ================= CUSTOMER: TRACK ORDERS =================
+        const initCustomerOrders = () => {
+            if(!currentUser) return;
+            
+            // Sesuai rules Anda, Customer hanya bisa query order miliknya sendiri (where customerId == uid)
+            const q = query(ordersRef, where("customerId", "==", currentUser.uid));
+            
+            onSnapshot(q, (snapshot) => {
+                const container = document.getElementById('customer-orders-container');
+                container.innerHTML = '';
+                
+                let myOrders = [];
+                snapshot.forEach(docSnap => {
+                    myOrders.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // Sort in memory (mengurutkan dari yang terbaru ke terlama)
+                myOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+
+                if(myOrders.length === 0) {
+                    container.innerHTML = '<div class="brutal-card p-8 bg-white text-center font-bold text-xl">Kamu belum memesan apapun. Ayo jajan!</div>';
+                    return;
+                }
+
+                myOrders.forEach(order => {
+                    let statusColor = 'bg-neo-yellow';
+                    let statusText = 'MENUNGGU KONFIRMASI';
+                    if(order.status === 'diproses') { statusColor = 'bg-neo-cyan'; statusText = 'SEDANG DIMASAK 🍳'; }
+                    if(order.status === 'selesai') { statusColor = 'bg-neo-green'; statusText = 'SIAP DISANTAP 🍽️'; }
+
+                    const itemsHtml = order.items.map(i => `${i.qty}x ${i.name}`).join('<br>');
+                    
+                    container.innerHTML += `
+                        <div class="brutal-card bg-white overflow-hidden flex flex-col md:flex-row">
+                            <div class="${statusColor} p-4 md:w-1/3 flex flex-col justify-center items-center border-b-4 md:border-b-0 md:border-r-4 border-black">
+                                <span class="font-black text-center text-xl tracking-wider">${statusText}</span>
+                                <span class="text-sm font-bold mt-2 bg-white px-2 border-2 border-black">ID: #${order.id.slice(0,6).toUpperCase()}</span>
+                            </div>
+                            <div class="p-6 md:w-2/3">
+                                <h4 class="font-black text-xl mb-3 border-b-4 border-black pb-2 inline-block">Detail Pesanan</h4>
+                                <p class="font-bold text-gray-700 leading-relaxed">${itemsHtml}</p>
+                                <div class="mt-6 flex justify-between items-center border-t-4 border-black pt-4">
+                                    <span class="font-bold">Total Pembayaran:</span>
+                                    <span class="text-2xl font-black">${formatRp(order.totalCost)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }, (error) => {
+                console.error("Error melacak pesanan:", error);
+            });
+        };
+
+        // ================= ADMIN: MANAGE MENU & ORDERS =================
+        const initAdmin = () => {
+            renderAdminMenuList(); // Render daftar kelola menu awal
+
+            // Form Add Menu Listener
+            const form = document.getElementById('form-add-menu');
+            // Remove previous listener to prevent duplication if initAdmin called twice
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            
+            newForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const data = {
+                    name: document.getElementById('menu-name').value,
+                    price: Number(document.getElementById('menu-price').value),
+                    category: document.getElementById('menu-category').value,
+                    imageUrl: document.getElementById('menu-img').value,
+                    createdAt: serverTimestamp()
+                };
+                try {
+                    await addDoc(menusRef, data);
+                    newForm.reset();
+                    showToast('Menu berhasil ditambah!');
+                } catch(err) { 
+                    console.error("Gagal menambah menu:", err);
+                    showToast('Gagal nambah menu. Anda tidak memiliki akses.', true); 
+                }
+            });
+
+            // Listen to All Orders (Admin bisa mengakses seluruh pesanan)
+            onSnapshot(ordersRef, (snapshot) => {
+                adminOrdersData = [];
+                snapshot.forEach(docSnap => {
+                    adminOrdersData.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // Sort in memory
+                adminOrdersData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+
+                // Eksekusi fungsi filter aktif
+                const currentFilter = document.getElementById('admin-order-filter').value;
+                renderAdminOrders(currentFilter);
+                
+                // Update Total Pendapatan
+                calculateRevenue();
+
+            }, (error) => {
+                console.error("Error memuat pesanan admin:", error);
+            });
+        };
+
+        // Fitur Filter Admin Pesanan
+        window.filterAdminOrders = (status) => {
+            renderAdminOrders(status);
+        };
+
+        const renderAdminOrders = (filterStatus) => {
+            const container = document.getElementById('admin-orders-container');
+            container.innerHTML = '';
+            
+            let filteredOrders = adminOrdersData;
+            
+            if (filterStatus !== 'semua') {
+                filteredOrders = adminOrdersData.filter(order => order.status === filterStatus);
+            }
+
+            if(filteredOrders.length === 0) {
+                container.innerHTML = `<div class="p-4 font-bold text-center border-4 border-dashed border-black bg-gray-50">Tidak ada pesanan ditemukan.</div>`;
+                return;
+            }
+
+            filteredOrders.forEach(order => {
+                let bg = 'bg-white';
+                if(order.status === 'pending') bg = 'bg-neo-yellow';
+                if(order.status === 'diproses') bg = 'bg-neo-cyan';
+                if(order.status === 'selesai') bg = 'bg-neo-green text-gray-500';
+
+                const itemsHtml = order.items.map(i => `- ${i.qty}x ${i.name}`).join('<br>');
+
+                container.innerHTML += `
+                    <div class="brutal-card ${bg} p-4 border-2">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-black text-lg">${order.customerName}</h4>
+                                <span class="text-xs font-bold bg-black text-white px-1">#${order.id.slice(0,6).toUpperCase()}</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-black text-xl">${formatRp(order.totalCost)}</div>
+                            </div>
+                        </div>
+                        <p class="font-bold text-sm mb-4 bg-white p-2 border-2 border-black rounded">${itemsHtml}</p>
+                        
+                        <div class="flex gap-2">
+                            <select onchange="updateOrderStatus('${order.id}', this.value)" class="brutal-input flex-grow text-sm py-1 font-bold cursor-pointer bg-white">
+                                <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>⏳ Pending</option>
+                                <option value="diproses" ${order.status === 'diproses' ? 'selected' : ''}>🍳 Diproses</option>
+                                <option value="selesai" ${order.status === 'selesai' ? 'selected' : ''}>✅ Selesai</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            });
+        };
+
+        // Render List Kelola Menu
+        const renderAdminMenuList = () => {
+            const container = document.getElementById('admin-menu-list');
+            if(!container) return;
+            
+            container.innerHTML = '';
+            
+            if(menus.length === 0) {
+                container.innerHTML = '<div class="text-sm font-bold text-gray-500">Belum ada menu terdaftar.</div>';
+                return;
+            }
+
+            menus.forEach(m => {
+                container.innerHTML += `
+                    <div class="flex justify-between items-center border-2 border-black p-2 bg-gray-50 rounded">
+                        <div class="font-bold text-sm truncate w-2/3 pr-2">${m.name} - <span class="text-neo-cyan">${formatRp(m.price)}</span></div>
+                        <button onclick="deleteMenu('${m.id}')" class="bg-red-500 text-white px-3 py-1 border-2 border-black font-bold text-xs hover:bg-red-600 brutal-btn p-0 h-8">HAPUS</button>
+                    </div>
+                `;
+            });
+        };
+
+        window.deleteMenu = async (id) => {
+            if(confirm("Apakah Anda yakin ingin menghapus menu ini permanen?")) {
+                try {
+                    await deleteDoc(doc(db, "menus", id));
+                    showToast("Menu berhasil dihapus!");
+                } catch(e) {
+                    console.error("Gagal menghapus menu:", e);
+                    showToast("Gagal menghapus menu.", true);
+                }
+            }
+        };
+
+        const calculateRevenue = () => {
+            // Hitung hanya order yang statusnya sudah Selesai
+            const completedOrders = adminOrdersData.filter(o => o.status === 'selesai');
+            const totalRevenue = completedOrders.reduce((sum, order) => sum + order.totalCost, 0);
+            document.getElementById('admin-revenue').innerText = formatRp(totalRevenue);
+        };
+
+        window.updateOrderStatus = async (orderId, newStatus) => {
+            try {
+                await updateDoc(doc(ordersRef, orderId), { status: newStatus });
+                showToast('Status pesanan diupdate!');
+            } catch(e) {
+                console.error("Gagal update status:", e);
+                showToast('Gagal update status', true);
+            }
+        };
+
+        // Bootstrap App
+        window.onload = () => {
+            loadMenus();
+        };
+
+    </script>
+</body>
+</html>

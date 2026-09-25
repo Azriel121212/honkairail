@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyCamera - SPA Neobrutalism</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* =========================================
+           NEOBRUTALISM CSS 
+           ========================================= */
+        :root {
+            --bg: #E8E8E8;
+            --primary: #FFDF00;
+            --secondary: #FF6B6B;
+            --accent: #4ECDC4;
+            --dark: #2b2b2b;
+            --border: 3px solid #000;
+            --shadow: 5px 5px 0px #000;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Space Grotesk', sans-serif; }
+        body { background-color: var(--bg); color: #000; overflow-x: hidden; }
+        
+        .spa-view { display: none; min-height: 100vh; }
+        .active-view { display: block; }
+        
+        .neo-card {
+            background: #fff; border: var(--border); box-shadow: var(--shadow);
+            padding: 20px; border-radius: 8px; margin-bottom: 20px;
+        }
+        .neo-btn {
+            background: var(--primary); border: var(--border); box-shadow: 3px 3px 0px #000;
+            padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 4px;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .neo-btn:active { transform: translate(3px, 3px); box-shadow: 0px 0px 0px #000; }
+        .neo-btn.red { background: var(--secondary); color: white; }
+        .neo-btn.blue { background: var(--accent); }
+        .neo-btn.small { padding: 5px 10px; font-size: 12px; }
+        .neo-input {
+            width: 100%; padding: 12px; border: var(--border); border-radius: 4px;
+            margin-bottom: 10px; font-size: 16px; outline: none; background: #fff;
+        }
+        .neo-input:focus { box-shadow: 3px 3px 0px var(--accent); }
+        
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .navbar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--accent); border-bottom: var(--border); padding: 15px 20px;
+        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .flex { display: flex; gap: 10px; flex-wrap: wrap; }
+        .mt-10 { margin-top: 10px; }
+        .mt-20 { margin-top: 20px; }
+        
+        .product-img { width: 100%; height: 200px; object-fit: cover; border: var(--border); border-radius: 4px; }
+        .badge { background: #fff; border: 2px solid #000; padding: 2px 8px; font-size: 12px; font-weight: bold; }
+        
+        #login-view.active-view { display: flex; justify-content: center; align-items: center; }
+        .login-box { width: 100%; max-width: 400px; text-align: center; }
+
+        /* CSS MODAL KERANJANG */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--bg); width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        .cart-item { display: flex; justify-content: space-between; border-bottom: 2px dashed #000; padding: 10px 0; }
+        
+        @media (max-width: 768px) {
+            .navbar { flex-direction: column; gap: 15px; text-align: center; }
+            .navbar .flex { justify-content: center; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-view" class="spa-view active-view">
+        <div class="neo-card login-box">
+            <h1 style="margin-bottom: 20px; font-size: 32px; background: var(--primary); border: var(--border); padding: 10px;">📸 MyCamera</h1>
+            <button id="btn-user-login" class="neo-btn" style="width: 100%; margin-bottom: 20px;">Masuk via Google (User)</button>
+            <div style="margin: 20px 0; border-top: 3px dashed #000;"></div>
+            <h3 style="margin-bottom: 10px;">Admin Login</h3>
+            <input type="email" id="admin-email" class="neo-input" placeholder="Email Admin">
+            <input type="password" id="admin-pass" class="neo-input" placeholder="Password Admin">
+            <button id="btn-admin-login" class="neo-btn red" style="width: 100%;">Masuk sebagai Admin</button>
+        </div>
+    </div>
+
+    <div id="user-view" class="spa-view">
+        <div class="navbar">
+            <h2>📸 MyCamera</h2>
+            <div class="flex">
+                <input type="text" id="search-product" class="neo-input" placeholder="Cari kamera..." style="margin-bottom:0; max-width: 200px;">
+                <button class="neo-btn blue" onclick="bukaKeranjang()">🛒 (<span id="cart-count">0</span>)</button>
+                <button class="neo-btn red btn-logout">Logout</button>
+            </div>
+        </div>
+        <div class="container">
+            <div class="flex" style="margin-bottom: 20px;">
+                <button class="neo-btn" onclick="filterCategory('All')">Semua</button>
+                <button class="neo-btn" onclick="filterCategory('DSLR')">DSLR</button>
+                <button class="neo-btn" onclick="filterCategory('Mirrorless')">Mirrorless</button>
+            </div>
+            
+            <div id="user-products" class="grid"></div>
+
+            <div class="neo-card mt-20">
+                <h3 style="border-bottom: var(--border); padding-bottom: 10px; margin-bottom: 15px;">📦 Pesanan Saya</h3>
+                <div id="user-orders" class="grid">
+                    <p>Memuat pesanan...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-keranjang" class="modal-overlay">
+        <div class="neo-card modal-content">
+            <h2>🛒 Isi Keranjang</h2>
+            <div id="cart-items-list" style="margin: 15px 0;"></div>
+            <h3 style="border-top: var(--border); padding-top: 10px;">Total: <span id="cart-total-price">Rp 0</span></h3>
+            <div class="flex" style="margin-top: 20px; justify-content: flex-end;">
+                <button class="neo-btn red" onclick="tutupKeranjang()">Tutup</button>
+                <button class="neo-btn blue" onclick="checkout()">Beli Sekarang</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-view" class="spa-view">
+        <div class="navbar" style="background: var(--primary);">
+            <h2>⚙️ Admin Panel</h2>
+            <button class="neo-btn red btn-logout">Logout</button>
+        </div>
+        <div class="container">
+            <div class="grid" style="margin-bottom: 20px;">
+                <div class="neo-card">
+                    <h3>👥 Total Transaksi</h3>
+                    <h2 id="stats-users">0</h2>
+                </div>
+                <div class="neo-card">
+                    <h3>💰 Total Pendapatan (Selesai)</h3>
+                    <h2 id="stats-revenue">Rp 0</h2>
+                </div>
+            </div>
+
+            <div class="neo-card">
+                <h3>➕ Tambah Kamera</h3>
+                <div class="grid" style="margin-top: 15px;">
+                    <input type="text" id="p-name" class="neo-input" placeholder="Nama Kamera">
+                    <input type="number" id="p-price" class="neo-input" placeholder="Harga (Rp)">
+                    <input type="number" id="p-stock" class="neo-input" placeholder="Stok">
+                    <select id="p-category" class="neo-input">
+                        <option value="DSLR">DSLR</option>
+                        <option value="Mirrorless">Mirrorless</option>
+                    </select>
+                    <input type="text" id="p-url" class="neo-input" placeholder="URL Gambar Kamera (Wajib)">
+                </div>
+                <button id="btn-add-product" class="neo-btn mt-10">Simpan Kamera</button>
+            </div>
+
+            <div class="neo-card">
+                <h3>📦 Daftar Pesanan</h3>
+                <div id="admin-orders" style="margin-top: 15px;">
+                    <p>Memuat pesanan...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        // Tambahan fitur query dan increment untuk kurangi stok
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, increment, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-Bnr2W2U1e0VVgVoBqBVhfkZ0IwdevZU",
+            authDomain: "mycamera-20f35.firebaseapp.com",
+            projectId: "mycamera-20f35",
+            storageBucket: "mycamera-20f35.firebasestorage.app",
+            messagingSenderId: "370685268899",
+            appId: "1:370685268899:web:4e42263dbf047c047f8016"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null; 
+
+        function navigateTo(viewId) {
+            document.querySelectorAll('.spa-view').forEach(v => v.classList.remove('active-view'));
+            document.getElementById(viewId).classList.add('active-view');
+            
+            if(viewId === 'user-view') {
+                loadProducts();
+                loadUserOrders(); // Panggil daftar pesanan user
+            }
+            if(viewId === 'admin-view') loadAdminData();
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                if (user.email === "my@gmail.com") {
+                    navigateTo('admin-view');
+                } else {
+                    navigateTo('user-view');
+                }
+            } else {
+                currentUser = null;
+                navigateTo('login-view');
+            }
+        });
+
+        document.getElementById('btn-user-login').onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch(e => alert(e.message));
+        document.getElementById('btn-admin-login').onclick = () => {
+            signInWithEmailAndPassword(auth, document.getElementById('admin-email').value, document.getElementById('admin-pass').value)
+            .catch(e => alert("Gagal login admin! Cek email/password."));
+        };
+        document.querySelectorAll('.btn-logout').forEach(btn => btn.onclick = () => signOut(auth));
+
+        // --- TAMBAH PRODUK ADMIN ---
+        document.getElementById('btn-add-product').onclick = async () => {
+            const btn = document.getElementById('btn-add-product');
+            btn.innerText = "Menyimpan...";
+            const name = document.getElementById('p-name').value;
+            const price = Number(document.getElementById('p-price').value);
+            const stock = Number(document.getElementById('p-stock').value);
+            const category = document.getElementById('p-category').value;
+            const imageUrl = document.getElementById('p-url').value;
+
+            if (!name || !price || !imageUrl) return alert("Isi semua data!");
+
+            try {
+                await addDoc(collection(db, "products"), { name, price, stock, category, image: imageUrl });
+                alert("Kamera berhasil ditambahkan!");
+                document.querySelectorAll('#admin-view input').forEach(i => i.value='');
+                loadAdminData();
+            } catch (error) { alert("Error: " + error.message); } 
+            finally { btn.innerText = "Simpan Kamera"; }
+        };
+
+        // --- USER: PRODUK & KERANJANG ---
+        let allProducts = [];
+        let cart = [];
+
+        async function loadProducts() {
+            const productGrid = document.getElementById('user-products');
+            productGrid.innerHTML = '<h3>Memuat Kamera...</h3>';
+            const snapshot = await getDocs(collection(db, "products"));
+            allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderProducts(allProducts);
+        }
+
+        function renderProducts(products) {
+            const productGrid = document.getElementById('user-products');
+            productGrid.innerHTML = products.length ? '' : '<p>Tidak ada produk.</p>';
+            products.forEach(p => {
+                productGrid.innerHTML += `
+                    <div class="neo-card">
+                        <img src="${p.image}" class="product-img" onerror="this.src='https://via.placeholder.com/200?text=No+Image'">
+                        <div style="margin-top: 15px;">
+                            <span class="badge">${p.category}</span>
+                            <span class="badge" style="background:var(--primary)">Stok: ${p.stock}</span>
+                            <h3 style="margin: 10px 0;">${p.name}</h3>
+                            <h2 style="color: var(--secondary)">Rp ${p.price.toLocaleString('id-ID')}</h2>
+                            <button class="neo-btn mt-10" style="width:100%" onclick="addToCart('${p.id}')">Tambah ke Keranjang</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.filterCategory = (cat) => renderProducts(cat === 'All' ? allProducts : allProducts.filter(p => p.category === cat));
+        document.getElementById('search-product').addEventListener('input', (e) => renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase()))));
+
+        window.addToCart = (id) => {
+            const product = allProducts.find(p => p.id === id);
+            // Hitung jumlah barang ini yg udah ada di keranjang biar gak ngelebihi stok
+            const countInCart = cart.filter(item => item.id === id).length;
+            
+            if(product.stock > countInCart) {
+                cart.push(product);
+                document.getElementById('cart-count').innerText = cart.length;
+                alert(`${product.name} masuk keranjang!`);
+            } else alert("Stok gak cukup der! Udah habis masuk keranjang semua.");
+        };
+
+        // --- FUNGSI MODAL & CHECKOUT (KURANGI STOK) ---
+        window.bukaKeranjang = () => {
+            const modal = document.getElementById('modal-keranjang');
+            const list = document.getElementById('cart-items-list');
+            const totalEl = document.getElementById('cart-total-price');
+            list.innerHTML = ''; let total = 0;
+
+            if(cart.length === 0) {
+                list.innerHTML = '<p>Keranjang masih kosong.</p>';
+            } else {
+                cart.forEach((item) => {
+                    total += item.price;
+                    list.innerHTML += `
+                        <div class="cart-item">
+                            <span>${item.name}</span>
+                            <span>Rp ${item.price.toLocaleString('id-ID')}</span>
+                        </div>
+                    `;
+                });
+            }
+            totalEl.innerText = `Rp ${total.toLocaleString('id-ID')}`;
+            modal.classList.add('active');
+        };
+
+        window.tutupKeranjang = () => document.getElementById('modal-keranjang').classList.remove('active');
+
+        window.checkout = async () => {
+            if(cart.length === 0) return alert("Keranjang kosong ngab!");
+            const btn = document.querySelector('#modal-keranjang .blue');
+            btn.innerText = "Memproses...";
+
+            const totalHarga = cart.reduce((sum, item) => sum + item.price, 0);
+            
+            // Hitung QTY tiap produk buat ngurangin stok
+            const itemCounts = {};
+            cart.forEach(item => { itemCounts[item.id] = (itemCounts[item.id] || 0) + 1; });
+            const itemsName = cart.map(item => item.name).join(", "); 
+
+            try {
+                // 1. Kurangin Stok di Database (Manggil fungsi increment Firebase)
+                for (const [id, qty] of Object.entries(itemCounts)) {
+                    const productRef = doc(db, "products", id);
+                    await updateDoc(productRef, { stock: increment(-qty) });
+                }
+
+                // 2. Bikin Order Baru
+                await addDoc(collection(db, "orders"), {
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    items: itemsName,
+                    total: totalHarga,
+                    status: "Menunggu",
+                    waktu: new Date().toLocaleDateString('id-ID')
+                });
+
+                alert("Pesanan berhasil dibuat! Menunggu ACC Admin.");
+                cart = []; 
+                document.getElementById('cart-count').innerText = "0";
+                tutupKeranjang();
+                loadProducts(); // Refresh layar biar stok terbaru keliatan
+                loadUserOrders(); // Refresh daftar pesanan user
+            } catch(e) {
+                alert("Gagal bayar: " + e.message);
+            } finally {
+                btn.innerText = "Beli Sekarang";
+            }
+        };
+
+        // --- USER: LOAD PESANAN SAYA ---
+        window.loadUserOrders = async () => {
+            const ordersDiv = document.getElementById('user-orders');
+            ordersDiv.innerHTML = 'Memuat pesanan...';
+            try {
+                const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid));
+                const snapshot = await getDocs(q);
+                ordersDiv.innerHTML = '';
+                
+                if (snapshot.empty) return ordersDiv.innerHTML = '<p>Belum ada riwayat pesanan.</p>';
+
+                snapshot.forEach(docSnap => {
+                    const order = docSnap.data();
+                    let statusColor = order.status === "Menunggu" ? "#FFDF00" : (order.status === "ACC" ? "#4ECDC4" : "#A8E6CF");
+                    
+                    // User cuma bisa mencet "Terima Barang" kalau statusnya udah ACC (atau Menunggu)
+                    // Kalau udah "Diterima", tombolnya hilang
+                    let btnHTML = '';
+                    if(order.status !== "Diterima") {
+                        btnHTML = `<button class="neo-btn small mt-10" style="background:#A8E6CF; width:100%" onclick="ubahStatusOrder('${docSnap.id}', 'Diterima', 'user')">Pesanan Diterima</button>`;
+                    }
+
+                    ordersDiv.innerHTML += `
+                        <div class="neo-card" style="padding: 15px; margin-bottom:0;">
+                            <p><strong>Barang:</strong> ${order.items}</p>
+                            <p><strong>Total:</strong> Rp ${order.total.toLocaleString('id-ID')}</p>
+                            <p class="mt-10"><strong>Status:</strong> <span class="badge" style="background:${statusColor}">${order.status}</span></p>
+                            ${btnHTML}
+                        </div>
+                    `;
+                });
+            } catch(e) {
+                ordersDiv.innerHTML = 'Gagal memuat pesanan: ' + e.message;
+            }
+        };
+
+        // --- ADMIN: LOAD PESANAN & UPDATE STATUS ---
+        window.loadAdminData = async () => {
+            const ordersDiv = document.getElementById('admin-orders');
+            ordersDiv.innerHTML = 'Memuat pesanan...';
+            
+            try {
+                const snapshot = await getDocs(collection(db, "orders"));
+                ordersDiv.innerHTML = '';
+                
+                let totalPendapatan = 0;
+                let totalTransaksi = 0;
+
+                if (snapshot.empty) return ordersDiv.innerHTML = '<p>Belum ada pesanan.</p>';
+
+                snapshot.forEach(docSnap => {
+                    const order = docSnap.data();
+                    const orderId = docSnap.id;
+                    totalTransaksi++;
+                    
+                    // Kalau statusnya Diterima, uangnya otomatis nambah ke Total Pendapatan
+                    if(order.status === "Diterima") totalPendapatan += order.total;
+
+                    let statusColor = order.status === "Menunggu" ? "#FFDF00" : (order.status === "ACC" ? "#4ECDC4" : "#A8E6CF");
+
+                    // Kalau udah Diterima, tombol buat admin juga hilang
+                    let actionBtns = '';
+                    if(order.status !== "Diterima") {
+                        actionBtns = `
+                            <div class="mt-10 flex">
+                                ${order.status === "Menunggu" ? `<button class="neo-btn small blue" onclick="ubahStatusOrder('${orderId}', 'ACC', 'admin')">ACC</button>` : ''}
+                                <button class="neo-btn small" style="background:#A8E6CF" onclick="ubahStatusOrder('${orderId}', 'Diterima', 'admin')">Diterima</button>
+                            </div>
+                        `;
+                    }
+
+                    ordersDiv.innerHTML += `
+                        <div class="neo-card" style="padding: 10px; margin-bottom: 10px;">
+                            <p><strong>Email:</strong> ${order.userEmail}</p>
+                            <p><strong>Barang:</strong> ${order.items}</p>
+                            <p><strong>Total:</strong> Rp ${order.total.toLocaleString('id-ID')}</p>
+                            <p><strong>Status:</strong> <span class="badge" style="background:${statusColor}">${order.status}</span></p>
+                            ${actionBtns}
+                        </div>
+                    `;
+                });
+
+                document.getElementById('stats-users').innerText = totalTransaksi;
+                document.getElementById('stats-revenue').innerText = "Rp " + totalPendapatan.toLocaleString('id-ID');
+
+            } catch(e) { ordersDiv.innerHTML = 'Gagal memuat pesanan: ' + e.message; }
+        };
+
+        // --- GLOBAL: FUNGSI UBAH STATUS ---
+        // Parameter role ngasih tau siapa yg ngeklik (admin atau user) buat nentuin layar mana yg direfresh
+        window.ubahStatusOrder = async (orderId, newStatus, role) => {
+            try {
+                const orderRef = doc(db, "orders", orderId);
+                await updateDoc(orderRef, { status: newStatus });
+                alert("Status berhasil diubah jadi " + newStatus);
+                
+                // Refresh sesuai layar orang yg lagi buka
+                if(role === 'admin') loadAdminData();
+                if(role === 'user') loadUserOrders();
+            } catch(error) {
+                alert("Gagal ubah status: " + error.message);
+            }
+        };
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CatatanKoo - Aplikasi Jurnal Harian</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Custom Styles & Animations */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .hidden-view { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Slider Styles */
+        .slider-container { position: relative; overflow: hidden; height: 300px; border-radius: 1rem; }
+        .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; object-fit: cover; }
+        .slide.active { opacity: 1; }
+        @media (min-width: 768px) { .slider-container { height: 400px; } }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <nav class="fixed w-full z-50 glass shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center cursor-pointer" onclick="navigate('home')">
+                    <i class="fas fa-book-open text-indigo-600 text-3xl mr-2"></i>
+                    <span class="font-bold text-xl text-indigo-800 tracking-wider">CatatanKoo</span>
+                </div>
+                <div>
+                    <div id="nav-guest">
+                        <button onclick="toggleModal('login-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-full font-medium transition duration-300 shadow-md">
+                            <i class="fas fa-sign-in-alt mr-1"></i> Masuk
+                        </button>
+                    </div>
+                    <div id="nav-user" class="hidden-view flex items-center space-x-4">
+                        <button onclick="navigate('dashboard')" class="text-gray-600 hover:text-indigo-600 font-medium transition">
+                            <i class="fas fa-chart-pie mr-1"></i> Dashboard
+                        </button>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full font-medium transition duration-300 text-sm shadow-md">
+                            Keluar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 pb-12 px-4 max-w-7xl mx-auto min-h-screen">
+
+        <section id="view-home" class="view-section fade-in">
+            <div class="slider-container shadow-xl mb-12 bg-gray-200" id="main-slider">
+                <div class="flex items-center justify-center h-full text-gray-500"><i class="fas fa-spinner fa-spin text-3xl"></i></div>
+            </div>
+
+            <div class="text-center mb-10">
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-4">Mengapa Mencatat itu Penting?</h1>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Temukan berbagai wawasan dan manfaat dari kebiasaan mencatat melalui artikel-artikel pilihan kami.</p>
+            </div>
+
+            <div class="mb-8 flex justify-center">
+                <div class="relative w-full max-w-md">
+                    <input type="text" id="search-article" placeholder="Cari artikel..." class="w-full pl-10 pr-4 py-3 rounded-full border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm outline-none transition">
+                    <i class="fas fa-search absolute left-4 top-3.5 text-gray-400"></i>
+                </div>
+            </div>
+
+            <div id="articles-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                </div>
+
+            <div class="mt-10 flex justify-center space-x-2" id="pagination-controls">
+                </div>
+        </section>
+
+
+        <section id="view-dashboard" class="view-section hidden-view fade-in">
+            <div class="mb-8 flex justify-between items-center flex-wrap gap-4">
+                <h2 class="text-3xl font-bold text-gray-800">Halo, <span id="user-name" class="text-indigo-600">User</span>!</h2>
+                <button onclick="toggleModal('note-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium shadow-lg flex items-center transition">
+                    <i class="fas fa-plus mr-2"></i> Buat Catatan Baru
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4 text-center">Kategori Catatan</h3>
+                    <div class="relative h-64"><canvas id="categoryChart"></canvas></div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4 text-center">Tingkat Kepentingan</h3>
+                    <div class="relative h-64"><canvas id="importanceChart"></canvas></div>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-bold mb-6 border-b pb-2">Catatan Anda</h3>
+            <div id="notes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </section>
+
+
+        <section id="view-admin" class="view-section hidden-view fade-in">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 text-red-600"><i class="fas fa-shield-alt"></i> Admin Panel</h2>
+                <p class="text-gray-600">Kelola konten halaman utama dan pantau statistik aplikasi.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-indigo-500">
+                    <h3 class="text-lg font-semibold text-gray-500">Total Pengguna Terdaftar</h3>
+                    <p class="text-4xl font-bold text-indigo-600 mt-2" id="admin-stat-users">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
+                    <h3 class="text-lg font-semibold text-gray-500">Total Catatan Dibuat</h3>
+                    <p class="text-4xl font-bold text-green-600 mt-2" id="admin-stat-notes">0</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-bold mb-4"><i class="fas fa-images text-indigo-500"></i> Kelola Slider</h3>
+                    <form id="form-slider" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">URL Gambar Slider</label>
+                            <input type="url" id="slider-url" required class="mt-1 w-full p-2 border rounded-md" placeholder="https://example.com/image.jpg">
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 transition">Tambah ke Slider</button>
+                    </form>
+                    <div class="mt-4 max-h-48 overflow-y-auto" id="admin-slider-list">
+                        </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-bold mb-4"><i class="fas fa-newspaper text-green-500"></i> Tambah Artikel Baru</h3>
+                    <form id="form-article" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Judul Artikel</label>
+                            <input type="text" id="article-title" required class="mt-1 w-full p-2 border rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">URL Gambar Utama</label>
+                            <input type="url" id="article-img" required class="mt-1 w-full p-2 border rounded-md" placeholder="https://...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Konten Artikel (Teks)</label>
+                            <textarea id="article-content" rows="4" required class="mt-1 w-full p-2 border rounded-md"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700 transition">Terbitkan Artikel</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[60] hidden-view flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative fade-in">
+            <button onclick="toggleModal('login-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Masuk ke CatatanKoo</h2>
+            
+            <div class="mb-8">
+                <p class="text-sm text-center text-gray-500 mb-4">Untuk pengguna umum, silakan masuk dengan akun Google.</p>
+                <button onclick="loginGoogle()" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg p-3 hover:bg-gray-50 transition shadow-sm font-medium text-gray-700">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" class="w-5 h-5">
+                    Masuk dengan Google
+                </button>
+            </div>
+
+            <div class="relative flex py-5 items-center">
+                <div class="flex-grow border-t border-gray-300"></div>
+                <span class="flex-shrink-0 mx-4 text-gray-400 text-sm">Area Khusus Admin</span>
+                <div class="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <form id="form-admin-login" class="space-y-4">
+                <div>
+                    <input type="email" id="admin-email" placeholder="Email Admin" required class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50">
+                </div>
+                <div>
+                    <input type="password" id="admin-password" placeholder="Password Admin" required class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50">
+                </div>
+                <button type="submit" class="w-full bg-gray-800 text-white p-3 rounded-lg font-medium hover:bg-gray-900 transition shadow-md">
+                    Masuk sebagai Admin
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="article-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[70] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-8 relative fade-in">
+            <button onclick="toggleModal('article-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-2xl"></i></button>
+            <div id="article-modal-content">
+                </div>
+        </div>
+    </div>
+
+    <div id="note-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[60] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto fade-in">
+            <button onclick="toggleModal('note-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            <h2 class="text-2xl font-bold mb-6 text-indigo-800" id="note-modal-title">Buat Catatan Baru</h2>
+            
+            <form id="form-note" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700">Judul Catatan</label>
+                        <input type="text" id="note-title" required class="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Kategori</label>
+                        <select id="note-category" class="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="Harian">Catatan Harian</option>
+                            <option value="Pekerjaan">Pekerjaan</option>
+                            <option value="Bisnis">Bisnis</option>
+                            <option value="Belajar">Belajar</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Tingkat Kepentingan</label>
+                        <select id="note-importance" class="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="red">Sangat Penting (Merah)</option>
+                            <option value="yellow">Sedang (Kuning)</option>
+                            <option value="blue">Tidak Penting (Biru)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">URL Gambar (Opsional)</label>
+                        <input type="url" id="note-image" class="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Link File/Tautan (Opsional)</label>
+                        <input type="url" id="note-link" class="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://...">
+                    </div>
+                </div>
+                
+                <div class="flex items-center mt-4">
+                    <input type="checkbox" id="note-pin" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <label for="note-pin" class="ml-2 block text-sm text-gray-900 font-medium">Pin catatan ini (Tampil teratas)</label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Isi Catatan</label>
+                    <textarea id="note-content" required rows="5" class="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                </div>
+                
+                <div class="flex justify-end pt-4">
+                    <button type="button" onclick="toggleModal('note-modal')" class="mr-3 px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition">Batal</button>
+                    <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-md transition">Simpan Catatan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 transform transition-transform duration-300 translate-y-20 opacity-0 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-xl z-[80] flex items-center">
+        <i id="toast-icon" class="fas mr-3"></i>
+        <span id="toast-msg">Notifikasi</span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, serverTimestamp, doc, setDoc, getDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDcPFDwHS_PCCOB8gQ7iNd__r4NaOf8k48",
+            authDomain: "catatankoo-887bf.firebaseapp.com",
+            projectId: "catatankoo-887bf",
+            storageBucket: "catatankoo-887bf.firebasestorage.app",
+            messagingSenderId: "728920678763",
+            appId: "1:728920678763:web:c3717163ad8aab89b5ec2e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // Global State
+        let currentUser = null;
+        let userRole = 'guest'; 
+        let articlesData = [];
+        let filteredArticles = [];
+        let currentPage = 1;
+        const itemsPerPage = 6; // Dibatasi 6 biar rapih grid-nya
+        
+        let chartInstances = { category: null, importance: null };
+
+        // ================= UTILS & UI LOGIC =================
+        
+        window.toggleModal = (id) => {
+            const el = document.getElementById(id);
+            if(el.classList.contains('hidden-view')) {
+                el.classList.remove('hidden-view');
+            } else {
+                el.classList.add('hidden-view');
+            }
+        };
+
+        window.navigate = (viewId) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden-view'));
+            
+            if(viewId === 'home') document.getElementById('view-home').classList.remove('hidden-view');
+            if(viewId === 'dashboard') {
+                if(userRole === 'admin') document.getElementById('view-admin').classList.remove('hidden-view');
+                else if (userRole === 'user') document.getElementById('view-dashboard').classList.remove('hidden-view');
+                else { showToast('Silakan login terlebih dahulu', 'error'); toggleModal('login-modal'); return; }
+            }
+            window.scrollTo(0, 0); // Gulir ke atas tiap pindah halaman
+        };
+
+        const showToast = (msg, type = 'success') => {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            const icon = document.getElementById('toast-icon');
+            icon.className = `fas mr-3 ${type === 'success' ? 'fa-check-circle text-green-400' : 'fa-exclamation-circle text-red-400'}`;
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        };
+
+        const formatDate = (timestamp) => {
+            if(!timestamp) return 'Baru saja';
+            const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour:'2-digit', minute:'2-digit' });
+        };
+
+        // ================= AUTH LOGIC =================
+        
+        window.loginGoogle = async () => {
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                await setDoc(doc(db, "users", result.user.uid), {
+                    email: result.user.email,
+                    name: result.user.displayName,
+                    role: 'user',
+                    lastLogin: serverTimestamp()
+                }, { merge: true });
+                
+                toggleModal('login-modal');
+                showToast('Berhasil masuk via Google!');
+            } catch (error) {
+                console.error(error);
+                showToast('Gagal Login: Pastikan localhost di-allow di Firebase', 'error');
+            }
+        };
+
+        document.getElementById('form-admin-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('admin-email').value;
+            const pass = document.getElementById('admin-password').value;
+            try {
+                const result = await signInWithEmailAndPassword(auth, email, pass);
+                await setDoc(doc(db, "users", result.user.uid), { email, role: 'admin' }, { merge: true });
+                toggleModal('login-modal');
+                showToast('Login Admin berhasil!');
+            } catch (error) {
+                showToast('Email/Password Admin salah', 'error');
+            }
+        });
+
+        window.logout = async () => {
+            await signOut(auth);
+            showToast('Berhasil keluar');
+            navigate('home');
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            const guestNav = document.getElementById('nav-guest');
+            const userNav = document.getElementById('nav-user');
+            
+            if (user) {
+                guestNav.classList.add('hidden-view');
+                userNav.classList.remove('hidden-view');
+                document.getElementById('user-name').innerText = user.displayName || user.email.split('@')[0];
+                
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if(userDoc.exists() && userDoc.data().role === 'admin') {
+                    userRole = 'admin';
+                    initAdmin();
+                    navigate('dashboard');
+                } else {
+                    userRole = 'user';
+                    initUserDashboard();
+                    if(document.getElementById('view-home').classList.contains('hidden-view')) {
+                        navigate('dashboard');
+                    }
+                }
+            } else {
+                guestNav.classList.remove('hidden-view');
+                userNav.classList.add('hidden-view');
+                userRole = 'guest';
+                navigate('home');
+            }
+        });
+
+        // ================= HOME PUBLIC LOGIC =================
+        
+        const initHome = () => {
+            loadSlider();
+            loadArticles();
+        };
+
+        const loadSlider = () => {
+            const q = query(collection(db, "sliders"), orderBy("createdAt", "desc"));
+            onSnapshot(q, (snapshot) => {
+                const container = document.getElementById('main-slider');
+                container.innerHTML = '';
+                let index = 0;
+                
+                if(snapshot.empty) {
+                    container.innerHTML = `<img src="https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1200&q=80" class="slide active" alt="Default Slider">`;
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    container.innerHTML += `<img src="${data.url}" class="slide ${index === 0 ? 'active' : ''}" alt="Slider">`;
+                    index++;
+                });
+
+                let currentSlide = 0;
+                const slides = document.querySelectorAll('.slide');
+                if(slides.length > 1) {
+                    setInterval(() => {
+                        slides[currentSlide].classList.remove('active');
+                        currentSlide = (currentSlide + 1) % slides.length;
+                        slides[currentSlide].classList.add('active');
+                    }, 5000);
+                }
+            });
+        };
+
+        const loadArticles = () => {
+            const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+            onSnapshot(q, (snapshot) => {
+                articlesData = [];
+                snapshot.forEach(doc => articlesData.push({id: doc.id, ...doc.data()}));
+                filteredArticles = [...articlesData];
+                currentPage = 1;
+                renderArticles();
+            });
+        };
+
+        document.getElementById('search-article').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            filteredArticles = articlesData.filter(a => 
+                a.title.toLowerCase().includes(val) || a.content.toLowerCase().includes(val)
+            );
+            currentPage = 1;
+            renderArticles();
+        });
+
+        const renderArticles = () => {
+            const container = document.getElementById('articles-container');
+            const pagination = document.getElementById('pagination-controls');
+            container.innerHTML = '';
+            pagination.innerHTML = '';
+
+            const totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const currentItems = filteredArticles.slice(start, end);
+
+            if(currentItems.length === 0) {
+                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-10">Tidak ada artikel ditemukan.</p>';
+                return;
+            }
+
+            currentItems.forEach(art => {
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 flex flex-col">
+                        <img src="${art.imageUrl || 'https://via.placeholder.com/400x200'}" alt="Article Image" class="w-full h-48 object-cover">
+                        <div class="p-5 flex-grow flex flex-col">
+                            <h3 class="font-bold text-xl mb-2 text-gray-800 line-clamp-2">${art.title}</h3>
+                            <p class="text-sm text-gray-500 mb-3"><i class="far fa-calendar-alt mr-1"></i> ${formatDate(art.createdAt)}</p>
+                            <p class="text-gray-600 line-clamp-3 text-sm mb-4 flex-grow">${art.content}</p>
+                            <button onclick="openArticle('${art.id}')" class="text-indigo-600 font-bold hover:text-indigo-800 transition flex items-center mt-auto">
+                                <i class="fas fa-book-reader mr-2"></i> Baca Selengkapnya
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Pagination Buttons
+            if(totalPages > 1) {
+                for(let i=1; i<=totalPages; i++) {
+                    const btn = document.createElement('button');
+                    btn.innerText = i;
+                    btn.className = `px-4 py-2 rounded-md font-medium transition ${i === currentPage ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 border hover:bg-gray-50'}`;
+                    btn.onclick = () => { currentPage = i; renderArticles(); };
+                    pagination.appendChild(btn);
+                }
+            }
+        };
+
+        // Buka Modal Artikel
+        window.openArticle = (id) => {
+            const art = articlesData.find(a => a.id === id);
+            if(art) {
+                document.getElementById('article-modal-content').innerHTML = `
+                    <img src="${art.imageUrl || 'https://via.placeholder.com/800x400'}" class="w-full h-64 object-cover rounded-xl mb-6 shadow-sm">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">${art.title}</h2>
+                    <p class="text-gray-500 text-sm mb-6 pb-4 border-b"><i class="far fa-calendar-alt mr-1"></i> Ditulis pada ${formatDate(art.createdAt)}</p>
+                    <div class="text-gray-700 leading-relaxed whitespace-pre-line text-lg">${art.content}</div>
+                `;
+                toggleModal('article-modal');
+            }
+        };
+
+        // ================= USER DASHBOARD LOGIC =================
+        
+        document.getElementById('form-note').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                userId: currentUser.uid,
+                title: document.getElementById('note-title').value,
+                category: document.getElementById('note-category').value,
+                importance: document.getElementById('note-importance').value,
+                imageUrl: document.getElementById('note-image').value,
+                externalLink: document.getElementById('note-link').value,
+                isPinned: document.getElementById('note-pin').checked,
+                content: document.getElementById('note-content').value,
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                await addDoc(collection(db, "notes"), data);
+                toggleModal('note-modal');
+                document.getElementById('form-note').reset();
+                showToast('Catatan berhasil disimpan!');
+            } catch (error) {
+                showToast('Gagal menyimpan catatan', 'error');
+            }
+        });
+
+        const initUserDashboard = () => {
+            if(!currentUser) return;
+            const q = query(collection(db, "notes"), where("userId", "==", currentUser.uid));
+            
+            onSnapshot(q, (snapshot) => {
+                let notes = [];
+                let categoriesCount = { 'Harian':0, 'Pekerjaan':0, 'Bisnis':0, 'Belajar':0, 'Lainnya':0 };
+                let importanceCount = { 'red':0, 'yellow':0, 'blue':0 };
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    notes.push({id: doc.id, ...data});
+                    if(categoriesCount[data.category] !== undefined) categoriesCount[data.category]++;
+                    if(importanceCount[data.importance] !== undefined) importanceCount[data.importance]++;
+                });
+
+                notes.sort((a, b) => {
+                    if (a.isPinned === b.isPinned) {
+                        const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+                        const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+                        return timeB - timeA;
+                    }
+                    return a.isPinned ? -1 : 1;
+                });
+
+                renderNotes(notes);
+                updateCharts(categoriesCount, importanceCount);
+            });
+        };
+
+        const getImportanceIcon = (color) => {
+            if(color === 'red') return '<i class="fas fa-exclamation-circle text-red-500" title="Sangat Penting"></i>';
+            if(color === 'yellow') return '<i class="fas fa-exclamation-triangle text-yellow-500" title="Sedang"></i>';
+            return '<i class="fas fa-info-circle text-blue-500" title="Tidak Penting"></i>';
+        };
+
+        window.deleteNote = async (id) => {
+            if(confirm('Hapus catatan ini permanen?')) {
+                await deleteDoc(doc(db, "notes", id));
+                showToast('Catatan dihapus');
+            }
+        };
+
+        const renderNotes = (notes) => {
+            const container = document.getElementById('notes-container');
+            container.innerHTML = '';
+            
+            if(notes.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-center text-gray-500 bg-white p-10 rounded-xl border border-dashed shadow-sm">Belum ada catatan. Ayo mulai tulis kegiatan Anda!</div>';
+                return;
+            }
+
+            notes.forEach(note => {
+                const imgHtml = note.imageUrl ? `<img src="${note.imageUrl}" onerror="this.style.display='none'" class="w-full h-32 object-cover rounded-md mb-3">` : '';
+                const linkHtml = note.externalLink ? `<a href="${note.externalLink}" target="_blank" class="text-indigo-500 text-sm hover:underline mt-2 inline-block font-medium"><i class="fas fa-external-link-alt mr-1"></i> Buka Tautan</a>` : '';
+                const pinHtml = note.isPinned ? `<div class="absolute -top-3 -right-3 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md transform rotate-12"><i class="fas fa-thumbtack"></i></div>` : '';
+                
+                let borderTop = 'border-blue-500';
+                if(note.importance === 'red') borderTop = 'border-red-500';
+                else if(note.importance === 'yellow') borderTop = 'border-yellow-500';
+
+                container.innerHTML += `
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 ${borderTop} hover:shadow-lg transition relative group flex flex-col">
+                        ${pinHtml}
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="text-xs font-semibold bg-gray-100 px-2 py-1 rounded text-gray-600">${note.category}</span>
+                            <div class="flex items-center space-x-3">
+                                ${getImportanceIcon(note.importance)}
+                                <button onclick="deleteNote('${note.id}')" class="text-gray-300 hover:text-red-500 transition"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        ${imgHtml}
+                        <h4 class="font-bold text-lg text-gray-800 mb-1 leading-tight">${note.title}</h4>
+                        <p class="text-xs text-gray-400 mb-3"><i class="far fa-clock mr-1"></i> ${formatDate(note.createdAt)}</p>
+                        <p class="text-gray-600 text-sm whitespace-pre-line line-clamp-4 flex-grow">${note.content}</p>
+                        ${linkHtml}
+                    </div>
+                `;
+            });
+        };
+
+        const updateCharts = (catCount, impCount) => {
+            const catCtx = document.getElementById('categoryChart');
+            if(chartInstances.category) chartInstances.category.destroy();
+            chartInstances.category = new Chart(catCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Harian', 'Pekerjaan', 'Bisnis', 'Belajar', 'Lainnya'],
+                    datasets: [{
+                        data: [catCount['Harian'], catCount['Pekerjaan'], catCount['Bisnis'], catCount['Belajar'], catCount['Lainnya']],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#6b7280']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+
+            const impCtx = document.getElementById('importanceChart');
+            if(chartInstances.importance) chartInstances.importance.destroy();
+            chartInstances.importance = new Chart(impCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Sangat Penting', 'Sedang', 'Tidak Penting'],
+                    datasets: [{
+                        label: 'Jumlah Catatan',
+                        data: [impCount['red'], impCount['yellow'], impCount['blue']],
+                        backgroundColor: ['#ef4444', '#eab308', '#3b82f6'],
+                        borderRadius: 5
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks:{stepSize:1} } }, plugins: { legend:{display:false} } }
+            });
+        };
+
+        // ================= ADMIN LOGIC =================
+        
+        const initAdmin = async () => {
+            const usersSnap = await getDocs(collection(db, "users"));
+            document.getElementById('admin-stat-users').innerText = usersSnap.size;
+
+            const notesSnap = await getDocs(collection(db, "notes"));
+            document.getElementById('admin-stat-notes').innerText = notesSnap.size;
+
+            const qSlider = query(collection(db, "sliders"), orderBy("createdAt", "desc"));
+            onSnapshot(qSlider, (snap) => {
+                const list = document.getElementById('admin-slider-list');
+                list.innerHTML = '';
+                snap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    list.innerHTML += `
+                        <div class="flex justify-between items-center bg-gray-50 p-3 border-b text-sm rounded-lg mb-2">
+                            <span class="truncate w-4/5 text-gray-600">${d.url}</span>
+                            <button onclick="deleteSlider('${docSnap.id}')" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    `;
+                });
+            });
+        };
+
+        window.deleteSlider = async (id) => {
+            if(confirm('Hapus gambar ini dari slider?')) {
+                await deleteDoc(doc(db, "sliders", id));
+                showToast('Slider dihapus!');
+            }
+        };
+
+        document.getElementById('form-slider').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('slider-url').value;
+            try {
+                await addDoc(collection(db, "sliders"), { url, createdAt: serverTimestamp() });
+                document.getElementById('slider-url').value = '';
+                showToast('Gambar berhasil ditambahkan ke slider');
+            } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        });
+
+        document.getElementById('form-article').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                title: document.getElementById('article-title').value,
+                imageUrl: document.getElementById('article-img').value,
+                content: document.getElementById('article-content').value,
+                createdAt: serverTimestamp()
+            };
+            try {
+                await addDoc(collection(db, "articles"), data);
+                document.getElementById('form-article').reset();
+                showToast('Artikel berhasil diterbitkan');
+            } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        });
+
+        // Bootstrap App
+        window.onload = () => {
+            initHome();
+        };
+
+    </script>
+</body>
+</html>
